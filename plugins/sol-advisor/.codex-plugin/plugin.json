@@ -1,21 +1,21 @@
 {
   "name": "sol-advisor",
-  "version": "0.6.0",
-  "description": "Codex-native selective routing: Sol / High declares solo, delegate, audit, or exceptional full delivery before work begins.",
+  "version": "0.7.1",
+  "description": "Bootstraps a fresh Sol / Max orchestrator that autonomously selects routes, models, and reasoning effort.",
   "author": {"name": "Daniel McAteer", "url": "https://github.com/DannyMac180"},
   "homepage": "https://github.com/DannyMac180/sol-advisor#readme",
   "repository": "https://github.com/DannyMac180/sol-advisor",
   "license": "MIT",
-  "keywords": ["codex", "orchestration", "multi-agent", "gpt-5.6"],
+  "keywords": ["codex", "orchestration", "multi-agent", "model-routing", "gpt-6"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Sol Advisor",
-    "shortDescription": "Plan with Sol / High, declare a risk-gated route, and use at most one auxiliary by default.",
-    "longDescription": "Sol Advisor keeps GPT-5.6 Sol / High in the primary session for architecture, implementation when solo or audit is selected, verification, and acceptance. Before the first task tool call, Sol declares a machine-auditable SELECTIVE ROUTE: solo is the default; delegate uses native GPT-5.6 Luna / Max for bounded work or GPT-5.6 Terra / High for higher-risk work; audit uses a fresh read-only GPT-5.6 Sol / High review; full combines one selected implementer with a fresh review only for a broad or high-risk exception. Public role metadata is authoritative and missing, conflicting, unavailable, or unobservable routing evidence fails closed.",
+    "shortDescription": "Let a fresh Sol / Max orchestrator choose the route, model, and effort.",
+    "longDescription": "Sol Advisor can be invoked from any primary model. It automatically dispatches the task to a fresh GPT-6 Sol / Max orchestrator without asking the user to confirm a model, effort, or lane. The orchestrator selects solo, delegate, audit, or full delivery and chooses each auxiliary model and reasoning effort from the currently available native agents. Luna is preferred for bounded routine work, Terra for ordinary complex implementation, Sol for hard synthesis and review, and Astra only for a bounded big-think consult whose ambiguity, stakes, and downstream consequences justify the usage.",
     "developerName": "Daniel McAteer",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/DannyMac180/sol-advisor",
-    "defaultPrompt": ["Use $sol-advisor:orchestration to declare a SELECTIVE ROUTE before task tools, then build and verify this feature.", "Use solo by default; select delegate, audit, or exceptional full only when the stated risk justifies it."]
+    "defaultPrompt": ["Use $sol-advisor:orchestration to complete and verify this task.", "Let Sol Advisor choose the route, auxiliary model, and reasoning effort automatically."]
   }
 }

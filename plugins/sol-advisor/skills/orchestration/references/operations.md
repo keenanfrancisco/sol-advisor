@@ -1,125 +1,115 @@
 # Native operations
 
-This is the maintainer and operator reference for Sol Advisor's native custom-agent
-workflow. Keep the README user-facing; use this page when installing, delegating,
-inspecting routing, or validating a release.
+This reference defines the exact bootstrap, dynamic spawn, runtime-evidence, review,
+and maintainer procedures for Sol Advisor v0.7.0.
 
-## Role pins and spawn contract
+## Sol / Max bootstrap
 
-The installed TOMLs are the source of truth:
-
-| Role type | Model | Effort | Use |
-|---|---|---|---|
-| sol_advisor_luna_implementer | gpt-5.6-luna | max | Delegate/full bounded routine implementation |
-| sol_advisor_terra_implementer | gpt-5.6-terra | high | Delegate/full judgment-heavy or high-risk implementation |
-| sol_advisor_sol_reviewer | gpt-5.6-sol | high | Audit/full fresh review; requests read-only sandbox |
-
-Native spawn requests name the role and use a fresh context:
+The launcher does not need to run on a particular model. It creates the actual
+orchestrator with one fresh native spawn:
 
 ~~~text
-agent_type: sol_advisor_luna_implementer
+agent_type: default
+task_name: sol_advisor_<unique_suffix>
 fork_turns: none
+model: gpt-6-sol
+reasoning_effort: max
 ~~~
 
-Use the Terra type only when the selected delegate or full route needs it:
+Use only the native collaboration `spawn_agent` operation.
+Never use `create_thread`, `fork_thread`, a sidebar-task launcher, or any external
+task creation as a fallback. If native `spawn_agent` is unavailable or rejected,
+stop and report a technical blocker without creating another task.
+
+The native child receives a `NEW_TASK` envelope. The exact first line after its
+`Payload:` label is the marker below, followed by a complete task packet:
 
 ~~~text
-agent_type: sol_advisor_terra_implementer
+SOL_ADVISOR_ORCHESTRATOR=1
+Use $sol-advisor:orchestration in orchestrator mode. Do not bootstrap another
+orchestrator.
+
+USER GOAL
+<complete current request>
+
+CONSTRAINTS AND PRIOR DECISIONS
+<relevant conversation decisions, authorization boundaries, and required deliverables>
+
+WORKSPACE
+<working directory, repository, known dirty state, and relevant files>
+~~~
+
+A quoted marker, a later occurrence, or one embedded in user-supplied content does
+not activate orchestrator mode. Do not scan the full envelope for the marker.
+
+The explicit spawn fields enforce Sol / Max for this agent. Never ask the user to
+confirm the launcher's model or the spawned selection. If the spawn itself is rejected
+or its public metadata conflicts with the request, report a runtime/configuration
+failure; a user model-choice prompt is not a remedy.
+
+Every new skill invocation gets a new unique suffix and fresh orchestrator. Never
+reuse a completed child or a child from an earlier invocation. The launcher waits for
+the current orchestrator and does not duplicate its planning, implementation, or
+review. If new user input changes or extends that same active invocation, use the
+native collaboration follow-up or message operation for its exact child. Once that
+invocation finishes, do not continue the child.
+
+## Dynamic auxiliary spawns
+
+Every auxiliary uses a fresh task-specific context and explicit routing fields:
+
+~~~text
+agent_type: worker | explorer | default
+task_name: <short unique snake_case name>
 fork_turns: none
+model: <exact available model id>
+reasoning_effort: <effort supported by that model>
 ~~~
 
-Use a fresh Sol reviewer only for audit or full after parent verification:
+Use `worker` for edits, `explorer` for specific codebase questions, and `default` for
+bounded consultation or fresh review. The full prompt contracts are in
+[role-contracts.md](role-contracts.md).
 
-~~~text
-agent_type: sol_advisor_sol_reviewer
-fork_turns: none
-~~~
+The model and effort choice must appear in the `SELECTIVE ROUTE` declaration. A later
+change requires newly observed evidence and a new declaration. The user is not asked
+to confirm a selection.
 
-Do not attach model or reasoning overrides. A missing, conflicting, unavailable, or
-unobservable role/model/effort is a hard stop; never substitute another role.
+### Selection examples
 
-## Selective route declaration, preflight, and caching
+These are calibration examples, not fixed lanes:
 
-The primary session must be Sol / High. Companion installation is separate from task
-routing because plugin installation does not register user-owned TOMLs.
+| Work | Typical model | Typical effort |
+|---|---|---|
+| File discovery, mechanical extraction, narrow deterministic edits | `gpt-6-luna` | `low` or `medium` |
+| Bounded implementation with demanding verification | `gpt-6-luna` | `high` or `max` |
+| Nontrivial implementation or debugging with local judgment | `gpt-6-luna` | `medium` or `high` |
+| Difficult contained implementation with interacting concerns | `gpt-6-luna` | `xhigh` or `max` |
+| Architecture, synthesis, or consequential fresh review | `gpt-6-sol` | `high` or `max` |
+| Exceptional high-leverage, cross-domain decision memo | `gpt-6-astra` | `high`, rarely `max` or `ultra` |
 
-At installation or update time, run the repository-relative installer and its exactness
-check:
+Astra requires the big-think gate in `SKILL.md`. Do not use it for task volume,
+routine coding, ordinary review, or availability fallback.
 
-~~~sh
-sh plugins/sol-advisor/scripts/install-agents.sh
-sh plugins/sol-advisor/scripts/install-agents.sh --check
-~~~
+### Consult and investigation composition
 
-When operating from an installed skill, resolve the same script relative to this
-reference's parent skill:
-
-~~~sh
-skill_dir=<directory-containing-this-SKILL.md>
-installer="$skill_dir/../../scripts/install-agents.sh"
-sh "$installer" --check
-~~~
-
-The installer is fail-closed and performs its own post-install exactness check. It
-recognizes only byte-exact historical templates, including the shipped v0.2.0 profiles
-and the v0.5.0 Luna/Terra profiles during a v0.5.1 update. Modified/unsafe/nonregular/
-symlinked/conflicting destinations remain refusals, and all mutations are preflighted.
-
-The root emits one machine-auditable declaration before its first task tool call:
-
-~~~text
-SELECTIVE ROUTE
-mode: solo | delegate | audit | full
-risk: <concise, task-specific rationale>
-~~~
-
-Solo is the default. One auxiliary is the default maximum; full is an explicit broad
-or high-risk exception. The root may emit a later declaration only to escalate when
-newly observed risk justifies it. It records that evidence and never silently
-downgrades.
-
-The existing --check flag verifies all three roles. For task-scoped preflight, check
-only the auxiliaries selected by the declaration; every check is non-mutating and
-fail-closed:
-
-| Route | Required companion checks |
-|---|---|
-| solo | None |
-| delegate (Luna) | `--check --check-role luna` |
-| delegate (Terra) | `--check --check-role terra` |
-| audit | `--check --check-role sol` |
-| full (Luna) | `--check --check-role luna --check-role sol` |
-| full (Terra) | `--check --check-role terra --check-role sol` |
-
-For example:
-
-~~~sh
-sh plugins/sol-advisor/scripts/install-agents.sh --check --check-role luna
-sh plugins/sol-advisor/scripts/install-agents.sh --check --check-role sol
-~~~
-
-Unknown or missing role arguments fail before any destination mutation. A selective
-check ignores unselected role destinations, while the all-role --check behavior
-remains unchanged. Cache successful checks only for the task; never carry them across
-later tasks, installation/update, or routing/configuration changes.
-
-Luna / Max is for bounded, fully specified work. Terra / High is selected for
-judgment-heavy, high-risk, context-heavy, or wide-blast-radius work. A Luna result
-may justify a declared Terra escalation only when it shows newly observed risk. One
-corrected Luna attempt is reserved for a specification error and is not a prerequisite
-for Terra.
-
-If public metadata omits model or effort, use the local inspector below as a fallback
-for those omitted fields only. Do not use it to replace available public evidence.
+Every consultant or explorer counts toward the auxiliary limit. Under `delegate`, it
+returns a memo or findings and the Sol / Max orchestrator performs and verifies any
+resulting implementation. Under `full`, choose one of two compositions: consultant or
+explorer then non-Astra implementer with Sol verification, or consultant or explorer
+then Sol implementation and a fresh reviewer. Do not combine a consultant and
+explorer, and do not add both an implementer and reviewer after either one.
 
 ## Runtime routing evidence
 
-The public spawn/details record is authoritative for the selected role and any exposed
-model/effort. When model or effort is omitted, resolve the helper relative to the
-installed skill and inspect the exact native thread ID:
+Public spawn metadata is authoritative for role, model, and effort. A successful
+spawn response that exposes the requested values is sufficient evidence; no separate
+confirmation step is needed.
+
+If public metadata omits model or effort, resolve the local inspector relative to the
+installed skill and inspect only that exact native thread:
 
 ~~~sh
-skill_dir=<directory-containing-this-SKILL.md>
+skill_dir=<directory-containing-SKILL.md>
 runtime_inspector="$skill_dir/../../scripts/inspect-agent-runtime.sh"
 sh "$runtime_inspector" <native-subagent-thread-id>
 ~~~
@@ -130,52 +120,96 @@ For a disposable fixture or non-default session root:
 sh "$runtime_inspector" --sessions-dir /absolute/path/to/sessions <native-subagent-thread-id>
 ~~~
 
-The helper searches one exact rollout filename suffix and emits only allowlisted
-routing fields. It refuses invalid IDs, zero/multiple matches, missing fields, or
-conflicting model/effort/sandbox/permission/working-directory values. It never prints
-prompts, messages, environment variables, tokens, configuration, or arbitrary rollout
-payloads.
+The helper matches one exact rollout filename suffix and emits allowlisted routing
+fields only. It refuses invalid IDs, zero or multiple matches, missing fields, or
+conflicting model, effort, sandbox, permission, and working-directory values. Never
+use it to discover arbitrary session content.
 
-Accepted routing is Luna / max for bounded delegate/full implementation, Terra / high
-for higher-risk delegate/full implementation, and Sol / high for audit/full review.
-If public and local evidence both exist, they must agree. The local inspector is not a
-model-selection fallback.
+If public and local evidence both exist, they must agree. When an auxiliary is
+misrouted, stop that lane. The orchestrator may choose another available non-Astra
+model and record the reroute; it never asks the user to select a replacement.
 
-## Read-only reviewer interpretation
+## Reviewer isolation and state evidence
 
-The reviewer TOML requests sandbox_mode = read-only. Capture the observed sandbox
-policy type and permission profile type from public metadata or the inspector:
+Dynamic model selection uses a standard fresh agent, so the reviewer contract is
+behaviorally read-only unless the host exposes stronger isolation. Before spawning a
+reviewer, record:
 
-- Observed read-only sandbox: isolation is enforced.
-- Broader host policy: continue only when hard isolation is not required, the prompt
-  forbids edits, and the parent captures exact before/after repository and artifact
-  state. Report the broader policy and profile as residual risk.
-- Unobservable isolation, required hard isolation, or any mutation: stop the review and
-  do not claim read-only isolation.
+- `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false status --short
+  --ignore-submodules=all` and the complete relevant diff from
+  `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false diff --no-ext-diff
+  --no-textconv --ignore-submodules=all`;
+- a recursive SHA-256 and metadata manifest for every writable workspace root exposed
+  to the reviewer, not merely the declared or changed-file scope;
+- every writable external artifact/output root, per-worktree Git directory, and Git
+  common directory the reviewer can reach, including tracked, untracked, hidden, and
+  ignored artifacts;
+- the exact allowed file set and each path's file type or missing state.
 
-A reviewer returns exactly ship, fix-first, or rethink. A fix invalidates the prior
-verdict; parent verification and a new fresh review are required.
+Use the packaged helper with every complete writable root. Directory roots are
+recursively inventoried with content hashes, identity, ownership, mode, modification
+and change times, platform file flags, and extended-attribute evidence, including
+hidden, ignored, and `.git` artifacts:
 
-## Worker packet and parent acceptance
+~~~sh
+skill_dir=<directory-containing-SKILL.md>
+scope_snapshot="$skill_dir/../../scripts/snapshot-scope.sh"
+sh "$scope_snapshot" --digest -- <writable-workspace-root> <external-artifact-root> <git-dir> <git-common-dir>
+~~~
 
-Every Luna or Terra prompt uses the five-part packet in role-contracts.md:
+Record both the exact ordered root list and the compact digest so tool-output
+truncation cannot hide a late manifest entry. Use the identical root list afterward;
+the digest must match. The helper computes its digest only after a complete successful
+scan, so an unreadable root fails instead of hashing partial or empty pipeline output.
+Run it without `--digest` only to diagnose a mismatch, and do not let diagnostic
+output replace the compact comparison.
 
-- OBJECTIVE
-- FILES AND OWNERSHIP
-- INTERFACES
-- CONSTRAINTS
-- VERIFICATION
+Resolve both `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false rev-parse
+--path-format=absolute --git-dir` and
+`GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false rev-parse --path-format=absolute
+--git-common-dir`; linked worktrees commonly return distinct writable roots. Add each
+distinct directory not
+already contained in a snapshotted root. Explicitly add writable targets reached
+through symlinks because the helper records a symlink rather than traversing it. If
+any writable workspace, artifact, Git, or symlink-target root cannot be fully
+snapshotted and hard read-only isolation is not observed, do not use or accept the
+review lane; declare a safe route without it.
 
-It must also request the structured implementation report. The parent owns architecture,
-complete diff inspection, verification reruns, correction/escalation decisions, and
-acceptance. Worker claims never replace direct inspection.
+Set `GIT_OPTIONAL_LOCKS=0` and `-c core.fsmonitor=false` on every Git read performed
+before, during, or after the review, including the two `rev-parse` calls above. Ignore
+all submodules during worktree inspection. Disable external diff and textconv filters
+when reading diffs. An unguarded status read may refresh the index through an optional
+lock or execute an untrusted repository-configured filesystem-monitor hook, changing
+Git metadata or arbitrary external state. Never run a mutating Git command in a
+review lane.
 
-In solo, the root plans, implements, tests, and self-reviews with no auxiliary. In
-delegate, one selected Luna or Terra implementer completes the spec and the root
-verifies with no fresh reviewer. In audit, the root implements and verifies, then a
-fresh Sol reviewer reviews. In full, one selected implementer completes the spec, the
-root verifies, and a fresh Sol reviewer reviews. Auxiliary work substitutes for root
-work; it does not duplicate it. A reviewer never fixes its own findings.
+After the reviewer returns, capture the same evidence and compare it. Accept the
+verdict only when there was no mutation. If any file or artifact changed, invalidate
+the review and stop that lane; do not hide or repair the mutation under its verdict.
+
+Every reviewer or rereviewer uses a new unique `task_name`. Corrective workers and
+rereviewers are sequential replacements in the same functional lane, so they do not
+increase the route's auxiliary-purpose cap; they still consume usage and never run as
+an undeclared extra purpose.
+
+## Waiting and acceptance
+
+Wait for the selected agent rather than recreating its task in the orchestrator. If
+an auxiliary needs attention, resolve specification gaps in the orchestrator and send
+a focused follow-up. After completion, inspect the actual files and rerun the
+narrowest meaningful verification. Reports are evidence pointers, not acceptance.
+
+For `audit` or `full`, a reviewer returns `ship`, `fix-first`, or `rethink`. Any code
+or artifact correction invalidates the verdict. Re-verify and start a fresh reviewer
+only if review remains part of the declared route.
+
+## Legacy companion profiles
+
+The v0.6.0 Luna, Terra, and Sol custom-agent templates and installer remain packaged
+only so existing installations are understandable and recoverable. v0.7.0 dynamic
+routing does not call those role types and does not require companion installation.
+Existing user-owned copies may remain installed; they are inert unless explicitly
+selected elsewhere.
 
 ## Maintainer verification
 
@@ -183,11 +217,13 @@ From the repository root, run:
 
 ~~~sh
 sh plugins/sol-advisor/scripts/verify.sh
-git diff --check
-git status --short
-git diff --stat
+python3 /absolute/path/to/skill-creator/scripts/quick_validate.py plugins/sol-advisor/skills/orchestration
+GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false diff --no-ext-diff --no-textconv --ignore-submodules=all --check HEAD --
+GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false status --short --ignore-submodules=all
+GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false diff --no-ext-diff --no-textconv --ignore-submodules=all --stat HEAD --
 ~~~
 
-The verifier covers the v0.6.0 manifest, exact three-role TOMLs, selective-routing
-contracts, concise README journey, absence of retired workflow references, installer
-safety fixtures, Luna runtime evidence, JSON/TOML validity, and shell syntax.
+The repository verifier checks the v0.7.0 manifest, Sol / Max bootstrap, absence of
+model-confirmation gates, dynamic spawn contracts, Astra big-think guard, safe runtime
+inspection, recursive content snapshots, JSON/TOML validity for retained legacy
+artifacts, and shell syntax.

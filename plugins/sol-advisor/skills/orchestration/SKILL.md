@@ -1,107 +1,147 @@
 ---
 name: orchestration
-description: "Codex-native risk-gated selective routing: default solo delivery, targeted native delegation or audit, and exceptional full review."
+description: "Run a fresh Sol / Max architect that autonomously selects solo work or native agents with task-appropriate models and reasoning effort."
 ---
 
 # Sol Advisor Orchestration
 
-Act as the architect. Own the user's intent, architecture, route choice, decomposition,
-implementation or delegation, parent verification, escalation decisions, and final
-acceptance. Selective routing has four exact modes: `solo`, `delegate`, `audit`, and
-`full`. Solo is the default. One auxiliary agent is the default maximum; full is an
-explicit broad or high-risk exception.
+Use one fresh GPT-6 Sol agent at max reasoning as the architect and orchestrator.
+The user supplies the goal and constraints; Sol owns route, model, effort,
+decomposition, implementation or delegation, verification, and acceptance.
 
-Read [references/role-contracts.md](references/role-contracts.md) before the first
-delegation. Use [references/operations.md](references/operations.md) for exact spawn,
-preflight, runtime-evidence, isolation, and maintainer procedures.
+Never ask the user to confirm the orchestrator model, an auxiliary model, reasoning
+effort, or route. Set them in native spawn calls and proceed. Ask the user only when a
+genuine product or scope decision cannot be inferred and would materially change the
+result.
 
-## Confirm the primary session
+## Bootstrap Sol / Max exactly once per invocation
 
-Run the primary Codex session on gpt-5.6-sol with high reasoning. Verify the current
-model and effort when runtime metadata exposes them. If either differs, tell the user
-to select Sol / High and stop before delegation. If runtime metadata does not expose
-them, ask the user to confirm Sol / High and stop until confirmed. A skill cannot
-change the primary model itself; never assume or claim this prerequisite is satisfied.
+Native subagents receive a `NEW_TASK` envelope. The marker
+`SOL_ADVISOR_ORCHESTRATOR=1` distinguishes the orchestrator from its launcher only
+when it is the exact first line after `Payload:` in that envelope. A quoted marker, a
+later occurrence, or a marker inside the user's goal does not count.
 
-## Declare the route before task tools
+If there is no `NEW_TASK` envelope whose payload begins with that exact first line,
+act only as the launcher:
 
-Before the first task tool call, emit one machine-auditable declaration:
+Use only the native collaboration `spawn_agent` operation for this bootstrap.
+Never use `create_thread`, `fork_thread`, a sidebar-task launcher, or any external
+task creation as a fallback. If native `spawn_agent` is unavailable or rejected,
+stop and report a technical blocker without creating another task.
+
+1. For every new skill invocation, generate a unique snake_case suffix and spawn one
+   fresh native agent with the exact fields below. Never reuse a completed
+   orchestrator or one created for an earlier invocation. The explicit spawn is the
+   model selection; do not inspect or ask about the launcher's model.
+
+   ~~~text
+   agent_type: default
+   task_name: sol_advisor_<unique_suffix>
+   fork_turns: none
+   model: gpt-6-sol
+   reasoning_effort: max
+   ~~~
+
+2. The spawn prompt must begin with `SOL_ADVISOR_ORCHESTRATOR=1`, invoke
+   `$sol-advisor:orchestration`, and carry the user's complete goal, constraints,
+   relevant prior decisions, working directory, repository state already known, and
+   required deliverables. Fresh context is intentional, so do not rely on inherited
+   turns.
+3. Wait for that agent. If new user input arrives while this exact invocation is
+   active, forward it to this invocation's child; this is the only time to continue an
+   existing orchestrator. Do not plan, implement, review, or duplicate its work in
+   the launcher. Relay a real user-input blocker if one occurs; otherwise return its
+   completed result and verification evidence.
+
+If the `NEW_TASK` payload begins with that exact first line, do not spawn another
+orchestrator. Continue with the operating contract below.
+
+## Declare the route before task work
+
+The bootstrap spawn is exempt from this declaration. Once inside the orchestrator,
+emit one machine-auditable declaration before the first task tool call:
 
 ~~~text
 SELECTIVE ROUTE
 mode: solo | delegate | audit | full
-risk: <concise, task-specific rationale>
+risk: <concise task-specific rationale>
+auxiliaries: none | <purpose — exact model — exact effort — reason>
 ~~~
 
-No task tool call may precede this declaration. Choose `solo` unless a stated risk
-justifies another mode. A later declaration may only escalate the route when newly
-observed risk justifies it; never silently downgrade. Record the evidence for an
-escalation. Details and the task-scoped preflight matrix are in operations.md.
+Choose the smallest route that improves the outcome. A later declaration may add or
+upgrade an auxiliary only when newly observed complexity, risk, or failed evidence
+justifies it. Record that evidence. Do not silently change the selected model or
+effort.
 
-## Preflight selected auxiliaries only
+## Select models and effort autonomously
 
-Confirm Sol / High in the primary session. Preflight only an auxiliary selected by the
-declared route: none for solo; Luna / Max or Terra / High for delegate; fresh Sol / High
-for audit; and the selected implementer plus fresh Sol reviewer for full. Public metadata
-for role, model, and effort is authoritative. If it omits a model or effort, use the
-local inspector only for that omitted field. Missing, conflicting, unavailable, or
-unobservable evidence stops the affected lane; never silently substitute a role,
-model, effort, or reviewer.
+Choose from models and efforts actually exposed by the native spawn tool. Use the
+least expensive capable combination; increase capability or effort when ambiguity,
+judgment, risk, or verification burden warrants it.
+
+- **Luna:** mechanical investigation, narrow edits, repetitive work, and fully
+  specified implementation. Start at low or medium; use high or max when the work is
+  still bounded but precision or verification is demanding.
+- **Terra:** (GPT-6 has no Terra; this role now runs `gpt-6-luna`.) Ordinary nontrivial coding, debugging, context-heavy implementation, and
+  work with meaningful local judgment. Start at medium or high; use xhigh or max only
+  for genuinely difficult contained work.
+- **Sol:** difficult synthesis, architecture, cross-cutting decisions, and fresh
+  review. Use high or max according to consequence and ambiguity.
+- **Astra:** a bounded big-think consult only. Select Astra when the question is both
+  unusually ambiguous and consequential, requires cross-domain synthesis or
+  adversarial reasoning, and better framing could change weeks or months of work.
+  State the qualifying signals in the route declaration. Task length, file count,
+  bulk execution, or a desire for extra confidence does not qualify. Prefer a short
+  consult that returns a decision memo. The consult counts as one auxiliary; Sol then
+  implements itself or delegates implementation to Luna or Terra under the declared
+  route. Use high first, max only when the decision warrants it, and ultra only for an
+  exceptional case with an explicit reason.
+
+Never fall upward into Astra merely because another model is unavailable. If a
+selected auxiliary cannot be started, choose the nearest available non-Astra model
+that still satisfies the task and record the reroute. Continue without requesting
+model confirmation.
 
 ## Route delivery without duplication
 
-- `solo`: root plans, implements, tests, and self-reviews; spawn no auxiliary.
-- `delegate`: select Luna / Max for bounded, fully specified work, or Terra / High for
-  judgment-heavy, high-risk, context-heavy, or wide-blast-radius work. The selected
-  implementer executes the complete spec; root verifies; do not request a fresh review.
-- `audit`: root implements and verifies; a fresh read-only Sol / High reviewer reviews
-  the accumulated diff; spawn no implementer.
-- `full`: only for an explicit broad or high-risk exception. Select one implementer,
-  root verifies, then a fresh read-only Sol / High reviewer reviews.
+- `solo`: the Sol / Max orchestrator plans, executes, verifies, and self-reviews.
+- `delegate`: use exactly one auxiliary. An implementer executes a complete work
+  packet and the orchestrator verifies it; a consultant returns a bounded decision
+  memo or an explorer returns focused findings, after which the Sol orchestrator
+  implements and verifies.
+- `audit`: the orchestrator executes and verifies; one fresh selected reviewer audits
+  the accumulated change set without writing.
+- `full`: use at most two auxiliaries for broad or high-risk work. Valid compositions
+  are implementer then reviewer; consultant or explorer then non-Astra implementer;
+  or consultant or explorer, Sol implementation, then reviewer. Do not combine a
+  consultant with an explorer. A second implementer replaces the reviewer only for
+  genuinely independent ownership with no overlapping files.
 
-Auxiliary work must substitute for root work, not duplicate it. A Luna result may
-justify escalation to Terra / High only when it reveals newly observed complexity,
-risk, wide blast radius, or misclassification. A corrected Luna attempt is reserved
-for a specification error and is not a prerequisite for Terra. Any route change must
-be declared and evidenced; do not silently downgrade.
+Auxiliary work substitutes for orchestrator work; it does not duplicate it.
+One auxiliary is the default maximum. Keep requirements, architecture, interface choices,
+worker specifications, diff inspection, verification reruns, escalation decisions,
+and final acceptance with the orchestrator.
 
-## Keep architect work in the primary session
+The auxiliary limit counts functional lanes, not failed or correction attempts. A
+replacement worker or fresh rereviewer occupies the same lane, runs sequentially with
+a unique task name, and still consumes usage; it never authorizes another concurrent
+purpose.
 
-Keep these responsibilities in the primary session:
+Before the first auxiliary spawn, read
+[references/role-contracts.md](references/role-contracts.md). Use
+[references/operations.md](references/operations.md) for exact spawn fields, runtime
+evidence, review isolation, and maintainer procedures.
 
-- Resolve requirements and material ambiguity.
-- Choose architecture, interfaces, decomposition, and selective route.
-- Write the complete five-part worker specification for any selected implementer.
-- Inspect the actual diff and rerun verification.
-- Decide whether newly observed risk warrants escalation.
-- Judge the reviewer verdict when the route includes review and accept the deliverable.
+## Verify and accept
 
-Every worker prompt must contain OBJECTIVE, FILES AND OWNERSHIP, INTERFACES,
-CONSTRAINTS, VERIFICATION, and the structured implementation return in
-[the role contracts](references/role-contracts.md). State the exact owned files,
-preserve concurrent edits, and never silently widen scope.
+Treat every auxiliary report as a claim. Inspect the complete diff or artifact,
+confirm changed-file scope, and rerun the narrowest meaningful checks in the
+orchestrator. A reviewer returns exactly `ship`, `fix-first`, or `rethink` and never
+implements its own finding. Any correction invalidates the prior verdict and requires
+fresh verification; obtain another reviewer only when the declared route still
+includes review.
 
-Treat worker reports as claims. Confirm the complete diff, changed-file scope, requested
-checks, and artifact/runtime evidence in the parent session. Do not duplicate the
-selected implementer's work in the primary session.
-
-## Review only when the route includes it
-
-For `audit` and `full`, after parent verification, spawn a new native Sol / High
-reviewer. The reviewer must remain behaviorally read-only, inspect the actual
-accumulated diff, and return exactly ship, fix-first, or rethink. A reviewer never
-implements its own fixes. `solo` and `delegate` do not receive a fresh reviewer.
-
-- ship: report completion with the verification evidence.
-- fix-first applies only to `audit` and `full`:
-  - audit: the root implements the required correction, re-verifies, and obtains a new
-    fresh reviewer.
-  - full: the selected implementer handles the required correction, the root
-    re-verifies, and a new fresh reviewer reviews.
-  - solo and delegate: no fresh reviewer is added unless a newly observed,
-    risk-evidenced route escalation is declared; never silently add one.
-- rethink: revise the architecture and do not report completion.
-
-Any implementation correction invalidates the prior verdict. Apply the observed sandbox
-and permission profile rules in the operations reference; never claim enforced
-read-only isolation when it was not observed.
+Public spawn metadata is authoritative for model and effort. If it omits either
+field, use the local inspector described in the operations reference only for the
+omitted field. A conflict or unsafe reviewer mutation stops that affected lane; reroute
+or correct it autonomously when safe rather than asking the user to choose a model.

@@ -1,48 +1,65 @@
-# Native Codex role contracts
+# Native agent contracts
 
-Use these contracts with Sol Advisor's namespaced, role-pinned native custom agents.
-They do not launch a nested Codex CLI or change global default-agent routing. Adapt
-every placeholder without removing a required field.
+Use these contracts after the Sol / Max bootstrap described in `SKILL.md`. The
+orchestrator chooses each auxiliary model and reasoning effort; users never select or
+confirm them.
 
-For task-scoped preflight, runtime evidence, sandbox interpretation, and maintainer
+For runtime evidence, fallback behavior, reviewer state checks, and maintainer
 commands, use [operations.md](operations.md).
 
-## Selective route and required preflight
+## Route and selection record
 
-Before the first task tool call, the root emits one machine-auditable route:
+Before task tools, the orchestrator records the route and every initially selected
+auxiliary:
 
 ~~~text
 SELECTIVE ROUTE
 mode: solo | delegate | audit | full
-risk: <concise, task-specific rationale>
+risk: <concise task-specific rationale>
+auxiliaries: none | <purpose — exact model — exact effort — reason>
 ~~~
 
-Solo is the default; one auxiliary is the default maximum. Full is an explicit broad
-or high-risk exception. A later route declaration may only escalate after newly
-observed risk justifies it and supplies that evidence; never silently downgrade.
+If new evidence warrants a different model, effort, or route, emit a new declaration
+that names the evidence and the change. Never silently substitute. Do not ask the
+user to approve a routing choice.
 
-Confirm Sol / High in the primary session, then preflight only auxiliaries selected by
-the route: none for solo; Luna / Max or Terra / High for delegate; fresh Sol / High
-for audit; and one selected implementer plus fresh Sol reviewer for full. Cache each
-successful check only for the task. After spawning, complete the selected role's
-routing and reviewer-isolation checks before accepting the result:
+Every auxiliary uses `fork_turns: none` so the orchestrator can set model and effort
+explicitly and give it a clean, task-specific packet. Use only models and efforts
+listed as available by the current native spawn tool.
 
-1. Require the selected exact native role and fresh-context spawn contract.
-2. Observe the selected role, model, and effort through public spawn/details metadata
-   first, using the local runtime inspector only for omitted fields. Accept Luna /
-   Max for bounded delegate/full implementation, Terra / High for higher-risk
-   delegate/full implementation, and Sol / High for audit/full review.
-3. For the reviewer, capture actual sandbox policy and permission profile types.
+The exact delivery modes are:
 
-A missing, stale, unsafe, conflicting, unavailable, inconsistent, or unobservable
-role/model/effort stops the native lane. Never silently fall back. Model and effort
-are pinned by custom-agent TOML, so omit native per-spawn overrides.
+- `solo`: the orchestrator executes and verifies without an auxiliary.
+- `delegate`: use one auxiliary. An implementer executes and the orchestrator verifies;
+  a consultant advises or an explorer investigates, then the orchestrator executes
+  and verifies.
+- `audit`: the orchestrator executes and verifies; one fresh reviewer audits.
+- `full`: use at most two auxiliaries. Compose implementer then reviewer; consultant
+  or explorer then non-Astra implementer; or consultant or explorer then orchestrator
+  execution then reviewer. Never combine a consultant and explorer. Two implementers
+  may replace review only for genuinely independent ownership.
 
-## Shared implementation contract
+## Implementation packet
 
-Every Luna or Terra prompt must contain all five sections:
+Use `agent_type: worker` for changes. Choose `model` and `reasoning_effort` from the
+routing policy in `SKILL.md` and pass both explicitly:
 
 ~~~text
+agent_type: worker
+task_name: <short unique snake_case name>
+fork_turns: none
+model: <selected exact model id>
+reasoning_effort: <selected supported effort>
+~~~
+
+The prompt must contain every section below:
+
+~~~text
+ROLE
+Act as Sol Advisor's selected implementation worker. Execute the settled
+specification, preserve every interface and constraint, and surface ambiguity rather
+than widening scope.
+
 OBJECTIVE
 <Observable outcome and why it matters.>
 
@@ -50,9 +67,9 @@ FILES AND OWNERSHIP
 You own only:
 - <exact file or module>
 
-You are not alone in the codebase. Other agents or the user may be editing concurrently.
-Preserve their edits, do not revert unrelated work, and adapt to changes already present.
-Do not modify files outside your ownership.
+You are not alone in the codebase. Other agents or the user may be editing
+concurrently. Preserve their edits, do not revert unrelated work, and adapt to changes
+already present. Do not modify files outside your ownership.
 
 INTERFACES
 - <Signatures, types, schemas, commands, or behavior that must remain compatible.>
@@ -67,7 +84,8 @@ VERIFICATION
   Success: <concrete expected evidence>
 
 RETURN
-Return exact commands and actual evidence. A completion claim without evidence is invalid.
+Return exact commands and actual evidence. A completion claim without evidence is
+invalid.
 
 IMPLEMENTATION REPORT
 STATUS: complete | partial | blocked
@@ -78,101 +96,95 @@ JUDGMENT CALLS: <decisions the specification left open, or none>
 GAPS: <unfinished work, ambiguity, or none>
 ~~~
 
-The primary session must inspect the diff and rerun verification itself.
+The orchestrator must inspect the actual result and rerun verification itself. It
+must not independently reimplement the same packet.
 
-## Exact mode contracts
+## Investigation packet
 
-- `solo`: root plans, implements, tests, and self-reviews. Spawn no auxiliary.
-- `delegate`: one selected Luna / Max or Terra / High implementer executes the complete
-  five-part specification. The root verifies. Do not spawn a fresh reviewer.
-- `audit`: root implements and verifies. A fresh read-only Sol / High reviewer inspects
-  the accumulated diff. Spawn no implementer. On `fix-first`, the root implements the
-  correction, re-verifies, and obtains a new fresh reviewer.
-- `full`: use only for an explicit broad or high-risk exception. One selected Luna /
-  Max or Terra / High implementer executes the complete specification, the root
-  verifies, and a fresh read-only Sol / High reviewer inspects the accumulated diff.
-  On `fix-first`, the selected implementer handles the correction, the root
-  re-verifies, and a new fresh reviewer inspects the result.
+Use `agent_type: explorer` only for a specific, bounded codebase question. Give it an
+exact question, relevant paths or symbols, and the evidence format required. Select
+model and effort explicitly with `fork_turns: none`. Do not ask an explorer to make
+edits or to perform a broad final review. An explorer counts as one auxiliary. Under
+`delegate`, Sol acts on its findings. Under `full`, it may precede one non-Astra
+implementer, or Sol may act on the findings before one fresh reviewer.
+Do not add a consultant to either composition.
 
-Auxiliary work substitutes for root work; it must not duplicate it. A route can
-escalate only with newly observed, recorded risk; it never silently downgrades.
-Solo and delegate have no fresh reviewer or review-driven correction unless a newly
-observed, risk-evidenced route escalation is declared; never silently add one.
+## Big-think consult packet
 
-## Luna / Max - bounded delegate/full implementation lane
-
-Use this lane only when a declared delegate or full route selects it for bounded,
-fully specified work. The installed role pins GPT-5.6 Luna at max reasoning. It must
-surface ambiguity and failed checks rather than redesigning the architecture. A first
-result that demonstrates newly observed judgment-heavy, high-risk, wide-blast-radius,
-or misclassified work may justify a declared Terra escalation; do not force a retry
-first. If the specification itself was incomplete or wrong, return a precise
-correction for one corrected Luna attempt. That retry is not a prerequisite for Terra.
-
-Spawn exactly:
+Use `agent_type: default` for an Astra consult only after the big-think gate in
+`SKILL.md` is satisfied. Keep the consult bounded and read-only. Use `gpt-6-astra`
+with the lowest effort that fits the decision, normally `high`:
 
 ~~~text
-agent_type: sol_advisor_luna_implementer
+agent_type: default
+task_name: big_think_consult_<unique_suffix>
 fork_turns: none
+model: gpt-6-astra
+reasoning_effort: high | max | ultra
 ~~~
-
-Do not attach per-spawn model or reasoning fields. Prompt:
-
-~~~text
-ROLE
-Act as Sol Advisor's default routine implementation worker. Execute the supplied
-specification within the settled architecture, preserve every stated interface and
-constraint, and surface ambiguity instead of redesigning the architecture.
-
-<paste and complete the Shared implementation contract>
-~~~
-
-## Terra / High - higher-risk delegate/full implementation lane
-
-Use this lane only when a declared delegate or full route selects judgment-heavy,
-high-risk, context-heavy, or wide-blast-radius work, including risk revealed by a
-first Luna result. The installed role pins GPT-5.6 Terra at high reasoning. A
-corrected Luna attempt is reserved for a specification error and is not a prerequisite
-for Terra.
-
-Spawn exactly:
-
-~~~text
-agent_type: sol_advisor_terra_implementer
-fork_turns: none
-~~~
-
-Do not attach per-spawn model or reasoning fields. Prompt:
-
-~~~text
-ROLE
-Act as Sol Advisor's explicit high-complexity escalation worker. Resolve the supplied
-specification within the settled architecture, preserve every stated interface and
-constraint, and surface ambiguity instead of redesigning the architecture.
-
-<paste and complete the Shared implementation contract>
-~~~
-
-## Fresh Sol / High - requested-read-only audit/full reviewer
-
-Only for an audit or full route, after parent verification, spawn a new native thread
-exactly:
-
-~~~text
-agent_type: sol_advisor_sol_reviewer
-fork_turns: none
-~~~
-
-The installed role pins Sol / High and requests a read-only sandbox. Do not attach
-per-spawn model or reasoning fields. Observe the actual role, pin, sandbox policy, and
-permission profile before accepting its verdict.
 
 Prompt:
 
 ~~~text
 ROLE
-Act as the fresh final reviewer. Remain strictly read-only: do not edit files, implement
-fixes, or broaden scope.
+Act as a bounded strategic consultant. Do not edit files or execute the plan.
+
+DECISION
+<The exact high-leverage question.>
+
+CONTEXT AND EVIDENCE
+<The minimum complete facts, constraints, options, and conflicts.>
+
+WHY ASTRA QUALIFIES
+- Ambiguity: <specific evidence>
+- Stakes or reversibility: <specific evidence>
+- Cross-domain/adversarial need: <specific evidence>
+- Downstream horizon: <what weeks or months of work could change>
+
+RETURN
+DECISION MEMO
+RECOMMENDATION: <one clear recommendation>
+KEY REASONS: <the decisive reasoning>
+HIDDEN ASSUMPTIONS: <what the orchestrator should test>
+FAILURE MODES: <strongest objections>
+WHAT WOULD CHANGE THE ANSWER: <specific evidence>
+~~~
+
+The Astra consult counts as one auxiliary. After considering the memo, use one of
+these declared compositions:
+
+- `delegate`: the Sol / Max orchestrator implements and verifies.
+- `full`: a selected non-Astra worker implements and Sol verifies, with no reviewer;
+  or Sol implements and a selected reviewer audits.
+
+The orchestrator owns the decision. Do not use Astra for bulk implementation, search,
+summarization, routine review, or merely large tasks.
+
+## Fresh review packet
+
+Use `agent_type: default` with the selected review model and effort. The reviewer is
+behaviorally read-only. The orchestrator must capture exact repository and artifact state before and after the review.
+
+~~~text
+agent_type: default
+task_name: final_review_<unique_suffix>
+fork_turns: none
+model: <selected exact model id>
+reasoning_effort: <selected supported effort>
+~~~
+
+Every reviewer and rereviewer gets a new unique task name. Never reuse a canonical
+agent name for a fresh verdict.
+
+Prompt:
+
+~~~text
+ROLE
+Act as the fresh final reviewer. Remain strictly read-only: do not create, modify,
+delete, format, or implement files, and do not broaden scope. Set
+`GIT_OPTIONAL_LOCKS=0` and `-c core.fsmonitor=false` on every Git read, ignore all
+submodules during worktree inspection, disable external diff and textconv filters,
+and never run a mutating Git command.
 
 STATED GOAL
 <The user's requested outcome.>
@@ -184,28 +196,48 @@ INTERFACES AND CONSTRAINTS
 - <Compatibility, repository rules, safety boundaries, and excluded scope.>
 
 VERIFICATION EVIDENCE
-- <command> -> <actual primary-session output evidence>
+- <command> -> <actual orchestrator output evidence>
 - <artifact or diff inspection> -> <actual evidence>
 
 REVIEW
 Inspect the actual files and accumulated change set. Judge correctness, completeness,
-regressions, scope discipline, interface preservation, test adequacy, and material risk.
+regressions, scope discipline, interface preservation, test adequacy, and material
+risk. Do not implement a finding.
 
-SOL REVIEW
+SOL ADVISOR REVIEW
 VERDICT: ship | fix-first | rethink
 REASON: <decisive evidence-based reason>
 FINDINGS: <precise file references and required fixes, or none>
 RESIDUAL RISK: <most important remaining risk, or none>
 ~~~
 
-If any fix is made after review, discard the verdict and run a new fresh review.
-Sol reviewing Sol is context-clean, not cross-model-family independence.
+Before review, capture a recursive content-and-metadata manifest for every writable
+workspace root exposed to the reviewer, plus every writable external artifact/output
+root, both the per-worktree Git directory and Git common directory, and every
+symlink target it can reach. Do not narrow the snapshot to declared or changed files.
+Include tracked, untracked, hidden, and ignored files plus content, identity,
+ownership, timestamps, flags, extended attributes, and the complete relevant Git
+diff. Capture the same evidence afterward and compare it before accepting the verdict.
+If a writable root cannot be fully captured and hard read-only isolation is not
+observed, do not use the review lane. Any detected mutation stops the lane and
+invalidates the verdict. Any later implementation correction also invalidates the
+verdict and requires fresh verification plus a new uniquely named reviewer when the
+declared route still includes review.
 
-Use observed isolation, not requested isolation:
+## Rerouting and corrections
 
-- With observed `read-only`, proceed with enforced isolation.
-- If the host broadens it, proceed only when hard isolation is not required, the
-  prompt forbids edits, and the parent captures and verifies exact before-and-after
-  repository and artifact state. Report the broader policy and profile.
-- If isolation is unobservable, hard isolation is required, or any mutation occurs,
-  stop the lane and do not hide or repair the mutation under that verdict.
+- A worker result that reveals more complexity or risk may justify a stronger model
+  or higher effort. Record the new evidence and issue a new declaration first.
+- A specification error belongs to the orchestrator. Correct the packet before
+  retrying; do not blame the worker or automatically raise model capability.
+- On `fix-first`, the orchestrator corrects the work in `audit`. In `full`, the
+  implementer corrects an implementer→reviewer result; Sol corrects a
+  consultant/explorer→Sol→reviewer result; and the relevant file owner corrects a
+  two-implementer result. Re-verify before a fresh review.
+- On `rethink`, revise the architecture and route. Do not report completion.
+- If a selected model is unavailable, choose the nearest capable non-Astra option and
+  record the substitution. Never use availability alone to cross the Astra gate.
+
+Replacement workers and fresh rereviewers count as sequential attempts in the same
+functional auxiliary lane, not additional route purposes. They require unique task
+names and still consume usage.
