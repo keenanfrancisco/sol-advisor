@@ -33,7 +33,7 @@ Use $sol-advisor:orchestration to build this feature and verify it.
 
 ## What happens automatically
 
-For every invocation, the launcher creates one fresh `gpt-6-sol` orchestrator at
+For every invocation, the launcher creates one fresh `gpt-6.1-sol` orchestrator at
 `max` effort. It never reuses a completed orchestrator. That orchestrator owns
 requirements, architecture, route selection, delegation, verification, and final
 acceptance. It records its route and any auxiliary model and effort choices before

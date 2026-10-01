@@ -151,7 +151,7 @@ pass "required files present"
 
 jq empty "$manifest"
 jq empty "$marketplace"
-[ "$(jq -r '.version' "$manifest")" = 0.7.1 ] || fail "manifest version is not 0.7.1"
+[ "$(jq -r '.version' "$manifest")" = 0.7.2 ] || fail "manifest version is not 0.7.2"
 grep -Fq 'fresh GPT-6 Sol / Max orchestrator' "$manifest" || fail "manifest omits Sol / Max bootstrap"
 grep -Fq 'without asking the user to confirm a model, effort, or lane' "$manifest" || fail "manifest omits no-confirmation behavior"
 grep -Fq 'chooses each auxiliary model and reasoning effort' "$manifest" || fail "manifest omits dynamic selection"
@@ -162,7 +162,7 @@ for document in "$skill" "$operations"; do
   grep -Fq 'agent_type: default' "$document" || fail "Sol bootstrap agent type missing from $document"
   grep -Fq 'task_name: sol_advisor_<unique_suffix>' "$document" || fail "unique Sol bootstrap task name missing from $document"
   grep -Fq 'fork_turns: none' "$document" || fail "fresh bootstrap context missing from $document"
-  grep -Fq 'model: gpt-6-sol' "$document" || fail "Sol bootstrap model missing from $document"
+  grep -Fq 'model: gpt-6.1-sol' "$document" || fail "Sol bootstrap model missing from $document"
   grep -Fq 'reasoning_effort: max' "$document" || fail "Sol bootstrap effort missing from $document"
   grep -Fq 'SOL_ADVISOR_ORCHESTRATOR=1' "$document" || fail "bootstrap recursion guard missing from $document"
 done
@@ -295,7 +295,7 @@ expected = {
     },
     "sol-advisor-sol-reviewer.toml": {
         "name": "sol_advisor_sol_reviewer",
-        "model": "gpt-6-sol",
+        "model": "gpt-6.1-sol",
         "model_reasoning_effort": "high",
         "sandbox_mode": "read-only",
     },
@@ -569,7 +569,7 @@ runtime_rollout=$runtime_day/rollout-2026-09-06T00-00-00-$runtime_id.jsonl
 printf '%s\n' \
   '{"type":"response_item","payload":{"prompt":"DO_NOT_LEAK_PROMPT"}}' \
   "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$runtime_id\",\"parent_thread_id\":\"00000000-0000-7000-8000-000000000000\",\"agent_role\":\"default\",\"agent_path\":\"/root/sol_advisor\",\"model_provider\":\"openai\",\"cwd\":\"/fixture\"}}" \
-  '{"type":"turn_context","payload":{"model":"gpt-6-sol","effort":"max","sandbox_policy":{"type":"workspace-write"},"permission_profile":{"type":"managed"},"cwd":"/fixture"}}' \
+  '{"type":"turn_context","payload":{"model":"gpt-6.1-sol","effort":"max","sandbox_policy":{"type":"workspace-write"},"permission_profile":{"type":"managed"},"cwd":"/fixture"}}' \
   > "$runtime_rollout"
 runtime_output=$(sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$runtime_id")
 printf '%s\n' "$runtime_output" | jq -e --arg id "$runtime_id" '
@@ -577,7 +577,7 @@ printf '%s\n' "$runtime_output" | jq -e --arg id "$runtime_id" '
   and .parent_thread_id == "00000000-0000-7000-8000-000000000000"
   and .agent_path == "/root/sol_advisor"
   and .model_provider == "openai"
-  and .model == "gpt-6-sol" and .effort == "max"
+  and .model == "gpt-6.1-sol" and .effort == "max"
   and .sandbox_policy_type == "workspace-write"
   and .permission_profile_type == "managed"
   and .cwd == "/fixture"
@@ -601,7 +601,7 @@ missing_sandbox_id=22222222-2222-7222-8222-222222222222
 missing_sandbox_rollout=$runtime_day/rollout-2026-09-06T00-00-01-$missing_sandbox_id.jsonl
 printf '%s\n' \
   "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$missing_sandbox_id\",\"agent_role\":\"default\"}}" \
-  '{"type":"turn_context","payload":{"model":"gpt-6-sol","effort":"max","permission_profile":{"type":"managed"},"cwd":"/fixture"}}' \
+  '{"type":"turn_context","payload":{"model":"gpt-6.1-sol","effort":"max","permission_profile":{"type":"managed"},"cwd":"/fixture"}}' \
   > "$missing_sandbox_rollout"
 if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$missing_sandbox_id" >/dev/null 2>&1; then
   fail "runtime inspector accepted missing sandbox policy"
@@ -611,7 +611,7 @@ missing_permission_id=33333333-3333-7333-8333-333333333333
 missing_permission_rollout=$runtime_day/rollout-2026-09-06T00-00-02-$missing_permission_id.jsonl
 printf '%s\n' \
   "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$missing_permission_id\",\"agent_role\":\"default\"}}" \
-  '{"type":"turn_context","payload":{"model":"gpt-6-sol","effort":"max","sandbox_policy":{"type":"workspace-write"},"cwd":"/fixture"}}' \
+  '{"type":"turn_context","payload":{"model":"gpt-6.1-sol","effort":"max","sandbox_policy":{"type":"workspace-write"},"cwd":"/fixture"}}' \
   > "$missing_permission_rollout"
 if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$missing_permission_id" >/dev/null 2>&1; then
   fail "runtime inspector accepted missing permission profile"
@@ -621,7 +621,7 @@ missing_cwd_id=44444444-4444-7444-8444-444444444444
 missing_cwd_rollout=$runtime_day/rollout-2026-09-06T00-00-03-$missing_cwd_id.jsonl
 printf '%s\n' \
   "{\"type\":\"session_meta\",\"payload\":{\"id\":\"$missing_cwd_id\",\"agent_role\":\"default\"}}" \
-  '{"type":"turn_context","payload":{"model":"gpt-6-sol","effort":"max","sandbox_policy":{"type":"workspace-write"},"permission_profile":{"type":"managed"}}}' \
+  '{"type":"turn_context","payload":{"model":"gpt-6.1-sol","effort":"max","sandbox_policy":{"type":"workspace-write"},"permission_profile":{"type":"managed"}}}' \
   > "$missing_cwd_rollout"
 if sh "$runtime_inspector" --sessions-dir "$runtime_sessions" "$missing_cwd_id" >/dev/null 2>&1; then
   fail "runtime inspector accepted missing working directory"
@@ -644,7 +644,7 @@ def session(thread_id: str, *, include_role: bool = True) -> dict:
 
 def turn(**overrides: object) -> dict:
     payload = {
-        "model": "gpt-6-sol",
+        "model": "gpt-6.1-sol",
         "effort": "max",
         "sandbox_policy": {"type": "workspace-write"},
         "permission_profile": {"type": "managed"},
@@ -734,4 +734,4 @@ sh -n "$scope_snapshot"
 sh -n "$script_dir/verify.sh"
 pass "shell syntax"
 
-printf '%s\n' "VERIFY PASSED: Sol Advisor v0.7.1 dynamic orchestration checks completed in $tmp_dir"
+printf '%s\n' "VERIFY PASSED: Sol Advisor v0.7.2 dynamic orchestration checks completed in $tmp_dir"

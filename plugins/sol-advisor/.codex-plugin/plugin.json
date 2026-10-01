@@ -1,6 +1,6 @@
 {
   "name": "sol-advisor",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Bootstraps a fresh Sol / Max orchestrator that autonomously selects routes, models, and reasoning effort.",
   "author": {"name": "Daniel McAteer", "url": "https://github.com/DannyMac180"},
   "homepage": "https://github.com/DannyMac180/sol-advisor#readme",

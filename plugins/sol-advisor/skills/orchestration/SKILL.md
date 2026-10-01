@@ -38,7 +38,7 @@ stop and report a technical blocker without creating another task.
    agent_type: default
    task_name: sol_advisor_<unique_suffix>
    fork_turns: none
-   model: gpt-6-sol
+   model: gpt-6.1-sol
    reasoning_effort: max
    ~~~
 

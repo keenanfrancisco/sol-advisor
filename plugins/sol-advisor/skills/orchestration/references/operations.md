@@ -12,7 +12,7 @@ orchestrator with one fresh native spawn:
 agent_type: default
 task_name: sol_advisor_<unique_suffix>
 fork_turns: none
-model: gpt-6-sol
+model: gpt-6.1-sol
 reasoning_effort: max
 ~~~
 
@@ -84,7 +84,7 @@ These are calibration examples, not fixed lanes:
 | Bounded implementation with demanding verification | `gpt-6-luna` | `high` or `max` |
 | Nontrivial implementation or debugging with local judgment | `gpt-6-luna` | `medium` or `high` |
 | Difficult contained implementation with interacting concerns | `gpt-6-luna` | `xhigh` or `max` |
-| Architecture, synthesis, or consequential fresh review | `gpt-6-sol` | `high` or `max` |
+| Architecture, synthesis, or consequential fresh review | `gpt-6.1-sol` | `high` or `max` |
 | Exceptional high-leverage, cross-domain decision memo | `gpt-6-astra` | `high`, rarely `max` or `ultra` |
 
 Astra requires the big-think gate in `SKILL.md`. Do not use it for task volume,
